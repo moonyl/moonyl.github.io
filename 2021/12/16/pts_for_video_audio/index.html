@@ -1,0 +1,258 @@
+<!DOCTYPE html><html lang="kr" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>PTS 개념에 대한 정리 | 소프트웨어 올라운더</title><meta name="author" content="Sang-moon, Lee"><meta name="copyright" content="Sang-moon, Lee"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="프로젝트 중에 웹을 통해서 실시간 스트림을 재생하는 기능을 구현하는 작업이 있었다. 카메라로부터 RTSP 스트림을 받아 브라우저에서 html5 video 표준으로 재생을 하는 기능이다. 이 기능을 구현하기 위해서는 RTSP 스트림을 받아서 fragmented mp4 스트림으로 remuxing 하는 작업이 필요하다. remuxing 작업은 ffmpeg의 ex">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PTS 개념에 대한 정리">
+<meta property="og:url" content="http://example.com/2021/12/16/pts_for_video_audio/index.html">
+<meta property="og:site_name" content="소프트웨어 올라운더">
+<meta property="og:description" content="프로젝트 중에 웹을 통해서 실시간 스트림을 재생하는 기능을 구현하는 작업이 있었다. 카메라로부터 RTSP 스트림을 받아 브라우저에서 html5 video 표준으로 재생을 하는 기능이다. 이 기능을 구현하기 위해서는 RTSP 스트림을 받아서 fragmented mp4 스트림으로 remuxing 하는 작업이 필요하다. remuxing 작업은 ffmpeg의 ex">
+<meta property="og:locale">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/4351142?v=4">
+<meta property="article:published_time" content="2021-12-16T05:49:16.000Z">
+<meta property="article:modified_time" content="2024-08-02T07:03:54.604Z">
+<meta property="article:author" content="Sang-moon, Lee">
+<meta property="article:tag" content="ffmpeg">
+<meta property="article:tag" content="PTS">
+<meta property="article:tag" content="RTSP">
+<meta property="article:tag" content="audio">
+<meta property="article:tag" content="video">
+<meta property="article:tag" content="live555">
+<meta property="article:tag" content="timebase">
+<meta property="article:tag" content="frequency">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://avatars.githubusercontent.com/u/4351142?v=4"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2021/12/16/pts_for_video_audio/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.14.0-b3"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>(()=>{
+      const saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+      
+      window.btf = {
+        saveToLocal: saveToLocal,
+        getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = url
+          script.async = true
+          script.onerror = reject
+          script.onload = script.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            script.onload = script.onreadystatechange = null
+            resolve()
+          }
+
+          Object.keys(attr).forEach(key => {
+            script.setAttribute(key, attr[key])
+          })
+
+          document.head.appendChild(script)
+        }),
+
+        getCSS: (url, id = false) => new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = url
+          if (id) link.id = id
+          link.onerror = reject
+          link.onload = link.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            link.onload = link.onreadystatechange = null
+            resolve()
+          }
+          document.head.appendChild(link)
+        }),
+
+        addGlobalFn: (key, fn, name = false, parent = window) => {
+          const pjaxEnable = false
+          if (!pjaxEnable && key.startsWith('pjax')) return
+
+          const globalFn = parent.globalFn || {}
+          const keyObj = globalFn[key] || {}
+    
+          if (name && keyObj[name]) return
+    
+          name = name || Object.keys(keyObj).length
+          keyObj[name] = fn
+          globalFn[key] = keyObj
+          parent.globalFn = globalFn
+        }
+      }
+    
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+      
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })()</script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":true,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Error',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'PTS 개념에 대한 정리',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2024-08-02 16:03:54'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">22</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">117</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">5</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a href="/" title="소프트웨어 올라운더"><span class="site-name">소프트웨어 올라운더</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">PTS 개념에 대한 정리</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2021-12-16T05:49:16.000Z" title="Created 2021-12-16 14:49:16">2021-12-16</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2024-08-02T07:03:54.604Z" title="Updated 2024-08-02 16:03:54">2024-08-02</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D/">프로그래밍</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="PTS 개념에 대한 정리"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>프로젝트 중에 웹을 통해서 실시간 스트림을 재생하는 기능을 구현하는 작업이 있었다. 카메라로부터 RTSP 스트림을 받아 브라우저에서 html5 video 표준으로 재생을 하는 기능이다. 이 기능을 구현하기 위해서는 RTSP 스트림을 받아서 fragmented mp4 스트림으로 remuxing 하는 작업이 필요하다.</p>
+<p>remuxing 작업은 ffmpeg의 example 중에 <a target="_blank" rel="noopener" href="https://ffmpeg.org/doxygen/trunk/remuxing_8c-example.html">remuxing.c</a>을 이용하면 그리 어렵지 않게 구현할 수 있다. 하지만, 실제 프로젝트에서는 ffmpeg의 입력으로 RTSP 스트림을 받는 것이 아니라, live555를 통해서 받은 payload 데이터 입력을 사용하도록 되어 있었다. 즉, remuxing을 위해서는 live555로부터 들어온 데이터를 ffmpeg의 AVPacket으로 변환 후, remuxing 예제처럼 특정 출력으로 만들어주는 작업이 필요했다.</p>
+<p>AVPacket의 data 필드가 디먹싱 된 데이터를 요구하기 때문에, live555로 받은 subsession의 chunk 데이터를 설정해주면 미디어의 데이터를 넘겨주는 작업은 어렵지 않게 할 수 있다. 문제는 pts를 어떻게 계산해주느냐이다.<br>위키피디아를 통해 PTS의 의미를 살펴보면,</p>
+<blockquote>
+<p>The presentation timestamp (PTS) is a timestamp metadata field in an MPEG transport stream or MPEG program stream that is used to achieve synchronization of programs’ separate elementary streams (for example Video, Audio, Subtitles) when presented to the viewer. The PTS is given in units related to a program’s overall clock reference, either Program Clock Reference (PCR) or System Clock Reference (SCR), which is also transmitted in the transport stream or program stream.</p>
+</blockquote>
+<p>대충 이해한 것을 정리하자면, PTS는 비디오나 오디오, 자막 등의 MPEG 스트림의 동기를 맞추기 위해서 사용하는 시간 정보라고 할 수 있겠다. PCR이나 SCR을 기준으로 생성하게끔 되어 있다는 말도 부가적으로 있다. 대체 무엇이란 말인가.</p>
+<p>몇 가지 자료 – <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/6603979/ffmpegavcodec-encode-video-setting-pts-h264/9423605">대표 자료는 이것이다.</a> – 들을 추가적으로 찾아보고, 테스트를 해 본 결과, 다음과 같은 결과를 얻을 수 있었다.</p>
+<p>Video PTS는 프레임 간의 시간 간격을 기준으로 단조 증가한다. 즉, 1초에 30장의 영상을 표시하는 경우, 프레임 간의 간격은 1&#x2F;30초가 될 것이다. 첫 번째 프레임이 0, 두 번째는 0.033, 세 번째는 0.067,…<br>그런데, 한 가지 더 알아야 할 부분이 있다. PTS는 초가 아니라 timebase를 기준으로 사용한다. 1초를 몇 등분으로 보느냐라고 하는 단위 값이다. live555에서는 subsession의 <code>rtpTimestampFrequency()</code>라는 함수를 통해서 넘어오는 값이고, ffmpeg에서는 AVStream의 <code>time_base</code> 필드가 의미하는 값이기도 하다. 결과적으로 PTS는 초 기준으로 구한 값에 timebase를 곱해준 값이 된다.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Video_PTS = $&#123;frame_index&#125; * (1 / frame_rate) * timebase</span><br></pre></td></tr></table></figure>
+
+<p>Audio PTS도 Video PTS와 마찬가지로 볼 수 있다. 그러나, 오디오 데이터는 비디오 데이터와 같이 frame rate를 기반으로 한 프레임씩 캡처해서 생성하는 것이 아니라, 연속적으로 한 시점에 대해서 한 바이트 이상의 값으로 샘플링하게 된다. 예를 들어, 현재 사용하고 있는 카메라로부터는 8KHz의 샘플링된 모노 채널의 오디오 데이터를 받고 있는데, 이것은 초당 8000번의 샘플이 발생한다는 의미가 된다. 그러나, 실제로 오디오 데이터를 받아보면, 1바이트씩 전송되는 것이 아니고, 일정 크기의 chunk 데이터로 넘어온다. 그러나 이 크기는 카메라마다 다른 것으로 보인다. 즉, 80 바이트씩 전송할 수도 있고, 120 바이트씩 전송할 수도 있는 것이다. 그래서, 이를 기준으로 Audio PTS를 정리해보면, 다음과 같다.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Audio_PTS = $&#123;frame_index&#125; * (1 / chunk_size) * timebase</span><br></pre></td></tr></table></figure>
+
+<p>이렇게 구한 값이 표준에 적합한 것인지는 확실하진 않다. 그러나, PTS 관련 문제로 여러 난관들이 있었는데, 이렇게 계산한 값이 가장 안정적인 듯하다.</p>
+<p>개념은 이런 식으로 파악했지만, live555 로부터 <code>frame rate</code> 정보를 얻을 수는 없다. 그리고, 카메라의 설정이나 상태에 따라 <code>frame rate</code>에 따른 프레임 간격이 일정하지 않을 수도 있다. 무슨 얘긴가 하면, 초당 10프레임 전송으로 설정을 했을 때, 0.1초 간격으로 오길 기대하나, 정작 프레임이 오는 간격이, 0, 0.067, 0.1, 0.133,… 과 같이 될 수도 있다는 것이다.</p>
+<p>그런데, 앞서 이해했던 PTS 값 중에, <code>$&#123;frame_index&#125; * (1 / frame_rate)</code> 이나 <code>$&#123;frame_index&#125; * (1 / chunk_size)</code> 은 바로 timestamp 값과 일치한다. 결국, RTSP로부터 받는 스트림에 대해서 PTS를 구하고자 한다면,</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PTS = $&#123;RTSP timestamp의 초단위 값&#125; * timebase</span><br></pre></td></tr></table></figure>
+
+<p>로 정리할 수 있다.</p>
+<p>정리한 내용으로 실제로 테스트를 해보면, 카메라의 경우에는 timestamp 값이 역전이 되어서 들어오는 경우도 있고, 값 자체가 0부터 들어오지 않는다. 정리한 식에서 <code>$&#123;RTSP timestamp의 초단위 값&#125;</code> 이란 값은 첫번째 프레임이 0이라는 가정에서 시작한다. 이것이 설정되지 않는다면, 재생 시에 그 시간으로 점프를 해야만 볼 수 영상의 시작을 볼 수 있을 것이다. 또한 timestamp가 역전되는 현상을 그대로 두고 pts를 계산해서 remuxing할 때 입력한다면, 괴로운 exception을 발견하게 될 것이다.</p>
+<p>이것을 개선하기 위해서 timestamp 값을 그대로 사용하지 않고, 첫 프레임의 timestamp 값을 기준값으로 두고, 그 이후의 프레임에 대해 기준값에 대한 차분만으로 새로운 초단위 값을 만들어낸다. 그리고, 역전이 되는 상황에서는 차분을 계산하지 않고, 이전 프레임에서 계산한 차분을 이용해서 개선할 수 있다. 역전 현상은 초반에 한두 번 나올 수 있는 것으로 보인다. 차분으로 인한 오차는 거의 무시할 수 있는 정도라고 생각한다.</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>Author: </span><span class="post-copyright-info"><a href="http://example.com">Sang-moon, Lee</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>Link: </span><span class="post-copyright-info"><a href="http://example.com/2021/12/16/pts_for_video_audio/">http://example.com/2021/12/16/pts_for_video_audio/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/ffmpeg/">ffmpeg</a><a class="post-meta__tags" href="/tags/PTS/">PTS</a><a class="post-meta__tags" href="/tags/RTSP/">RTSP</a><a class="post-meta__tags" href="/tags/audio/">audio</a><a class="post-meta__tags" href="/tags/video/">video</a><a class="post-meta__tags" href="/tags/live555/">live555</a><a class="post-meta__tags" href="/tags/timebase/">timebase</a><a class="post-meta__tags" href="/tags/frequency/">frequency</a></div><div class="post_share"><div class="social-share" data-image="https://avatars.githubusercontent.com/u/4351142?v=4" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021/12/22/upgrade_qt5_ubunt1804/" title="우분투 18.04에서 QT5 업그레이드"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Previous</div><div class="prev_info">우분투 18.04에서 QT5 업그레이드</div></div></a></div><div class="next-post pull-right"><a href="/2021/12/13/git_parameter_variable/" title="git paramters plugin을 이용한 tag 버전 빌드"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Next</div><div class="next_info">git paramters plugin을 이용한 tag 버전 빌드</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>Related Articles</span></div><div class="relatedPosts-list"><div><a href="/2017/12/20/avformat_seek_file/" title="avformat_seek_file 좀 더 파기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2017-12-20</div><div class="title">avformat_seek_file 좀 더 파기</div></div></a></div><div><a href="/2017/12/20/av_frame_free/" title="av_frame_free에 대한 고찰"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2017-12-20</div><div class="title">av_frame_free에 대한 고찰</div></div></a></div><div><a href="/2021/11/25/implement_Dash_service/" title="DASH 서비스 해보기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-11-25</div><div class="title">DASH 서비스 해보기</div></div></a></div><div><a href="/2020/03/01/install_ffmpeg_cmake/" title="cmake로 ffmpeg 라이브러리 설치하기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-03-01</div><div class="title">cmake로 ffmpeg 라이브러리 설치하기</div></div></a></div><div><a href="/2020/02/29/take_ffmpeg_cmake/" title="cmake로 ffmpeg 라이브러리 가져오기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-02-29</div><div class="title">cmake로 ffmpeg 라이브러리 가져오기</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Sang-moon, Lee</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">22</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">117</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">5</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/moonyl"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/moonyl" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:moonysl@hanmail.net" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/07/23/hello-world/" title="Hello World">Hello World</a><time datetime="2024-07-23T09:06:30.763Z" title="Created 2024-07-23 18:06:30">2024-07-23</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/27/docker_host_server_ip/" title="도커 컨테이너에서 도커 호스트의 서버로 접근">도커 컨테이너에서 도커 호스트의 서버로 접근</a><time datetime="2021-12-27T05:49:16.000Z" title="Created 2021-12-27 14:49:16">2021-12-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/22/upgrade_qt5_ubunt1804/" title="우분투 18.04에서 QT5 업그레이드">우분투 18.04에서 QT5 업그레이드</a><time datetime="2021-12-22T05:49:16.000Z" title="Created 2021-12-22 14:49:16">2021-12-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/16/pts_for_video_audio/" title="PTS 개념에 대한 정리">PTS 개념에 대한 정리</a><time datetime="2021-12-16T05:49:16.000Z" title="Created 2021-12-16 14:49:16">2021-12-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/13/git_parameter_variable/" title="git paramters plugin을 이용한 tag 버전 빌드">git paramters plugin을 이용한 tag 버전 빌드</a><time datetime="2021-12-13T05:49:16.000Z" title="Created 2021-12-13 14:49:16">2021-12-13</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By Sang-moon, Lee</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Toggle Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between Single-column and Double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="Back To Top"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.14.0-b3"></script><script src="/js/main.js?v=4.14.0-b3"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  const runMermaid = (ele) => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    Array.from(ele).forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+      const mermaidID = 'mermaid-' + index
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+
+      const renderV10 = () => {
+        renderFn.then(({svg}) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svg)
+        })
+      }
+
+      const renderV9 = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      typeof renderFn === 'string' ? renderV9(renderFn) : renderV10()
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+    
+    codeMermaidEle.forEach(ele => {
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.innerHTML = `<pre class="mermaid-src" hidden>${ele.textContent}</pre>`
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+  
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html><html lang="kr" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>CMake에서 ARGN과 ARGV | 소프트웨어 올라운더</title><meta name="author" content="Sang-moon, Lee"><meta name="copyright" content="Sang-moon, Lee"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="cmake는 편하기도 하면서, 이해하기 어렵기도 하다. 솔직히 cmake 정식 사이트의 매뉴얼은 읽어도 무슨 말인지 잘 이해되지 않는다. 아직 그만한 내공이 쌓이지 않아서 그런 것 같다.ARGN과 ARGV도 이해가 잘 되지 않는 항목 중에 하나였다.  ${ARGV} holds the list of all arguments given to the macro">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMake에서 ARGN과 ARGV">
+<meta property="og:url" content="http://example.com/2019/10/09/cmake_argn_argv/index.html">
+<meta property="og:site_name" content="소프트웨어 올라운더">
+<meta property="og:description" content="cmake는 편하기도 하면서, 이해하기 어렵기도 하다. 솔직히 cmake 정식 사이트의 매뉴얼은 읽어도 무슨 말인지 잘 이해되지 않는다. 아직 그만한 내공이 쌓이지 않아서 그런 것 같다.ARGN과 ARGV도 이해가 잘 되지 않는 항목 중에 하나였다.  ${ARGV} holds the list of all arguments given to the macro">
+<meta property="og:locale">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/4351142?v=4">
+<meta property="article:published_time" content="2019-10-09T05:49:16.000Z">
+<meta property="article:modified_time" content="2024-08-02T06:37:07.223Z">
+<meta property="article:author" content="Sang-moon, Lee">
+<meta property="article:tag" content="cmake">
+<meta property="article:tag" content="ARGN">
+<meta property="article:tag" content="ARGV">
+<meta property="article:tag" content="빌드">
+<meta property="article:tag" content="매크로">
+<meta property="article:tag" content="가변인수">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://avatars.githubusercontent.com/u/4351142?v=4"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2019/10/09/cmake_argn_argv/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.14.0-b3"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>(()=>{
+      const saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+      
+      window.btf = {
+        saveToLocal: saveToLocal,
+        getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = url
+          script.async = true
+          script.onerror = reject
+          script.onload = script.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            script.onload = script.onreadystatechange = null
+            resolve()
+          }
+
+          Object.keys(attr).forEach(key => {
+            script.setAttribute(key, attr[key])
+          })
+
+          document.head.appendChild(script)
+        }),
+
+        getCSS: (url, id = false) => new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = url
+          if (id) link.id = id
+          link.onerror = reject
+          link.onload = link.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            link.onload = link.onreadystatechange = null
+            resolve()
+          }
+          document.head.appendChild(link)
+        }),
+
+        addGlobalFn: (key, fn, name = false, parent = window) => {
+          const pjaxEnable = false
+          if (!pjaxEnable && key.startsWith('pjax')) return
+
+          const globalFn = parent.globalFn || {}
+          const keyObj = globalFn[key] || {}
+    
+          if (name && keyObj[name]) return
+    
+          name = name || Object.keys(keyObj).length
+          keyObj[name] = fn
+          globalFn[key] = keyObj
+          parent.globalFn = globalFn
+        }
+      }
+    
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+      
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })()</script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":true,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Error',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'CMake에서 ARGN과 ARGV',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2024-08-02 15:37:07'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">22</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">117</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">5</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a href="/" title="소프트웨어 올라운더"><span class="site-name">소프트웨어 올라운더</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">CMake에서 ARGN과 ARGV</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2019-10-09T05:49:16.000Z" title="Created 2019-10-09 14:49:16">2019-10-09</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2024-08-02T06:37:07.223Z" title="Updated 2024-08-02 15:37:07">2024-08-02</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D/">프로그래밍</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="CMake에서 ARGN과 ARGV"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>cmake는 편하기도 하면서, 이해하기 어렵기도 하다. 솔직히 cmake 정식 사이트의 매뉴얼은 읽어도 무슨 말인지 잘 이해되지 않는다. 아직 그만한 내공이 쌓이지 않아서 그런 것 같다.<br>ARGN과 ARGV도 이해가 잘 되지 않는 항목 중에 하나였다.</p>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://cmake.org/cmake/help/latest/command/macro.html">${ARGV} holds the list of all arguments given to the macro and ${ARGN} holds the list of arguments past the last expected argument.</a></p>
+</blockquote>
+<p>ARGV는 확실히 매크로나 함수에 넘겨지는 모든 인수를 의미한다는 것을 알 수 있다. ARGN과 차이는 <code>past the last expected argument</code>, 이것에 달려있다. 몇 가지 확인 작업을 거쳐서 차이를 정리한다.</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span>(<span class="keyword">test</span> a1 a2 a3)</span><br><span class="line">    <span class="keyword">message</span>(STATUS <span class="string">&quot;ARGV=$&#123;ARGV&#125;&quot;</span>)</span><br><span class="line">    <span class="keyword">message</span>(STATUS <span class="string">&quot;ARGN=$&#123;ARGN&#125;&quot;</span>)</span><br><span class="line"><span class="keyword">endfunction</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">test</span>(a b c)</span><br></pre></td></tr></table></figure>
+
+<p>결과가 예측되는가? 확실히 ARGV는 <code>a1;a2;a3</code>가 나올 것 같다. 그렇다면 ARGN은? 신기하게도 빈 문자열이 결과로 나온다. ARGN은 그렇다면 무슨 용도가 무엇이란 말인가? 새로운 흥미로운 예를 하나 더 들어보겠다.</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span>(<span class="keyword">test</span>)</span><br><span class="line">    <span class="keyword">message</span>(STATUS <span class="string">&quot;ARGV=$&#123;ARGV&#125;&quot;</span>)</span><br><span class="line">    <span class="keyword">message</span>(STATUS <span class="string">&quot;ARGN=$&#123;ARGN&#125;&quot;</span>)</span><br><span class="line"><span class="keyword">endfunction</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">test</span>(a b c)</span><br></pre></td></tr></table></figure>
+
+<p>이 경우는 test라는 함수는 파라메터가 없는 것으로 정의를 했지만, 3개의 <code>기대하지 않은 인자</code>를 넘겨서 실행한 경우가 되겠다. ARGV는 이전과 동일하게 <code>a1;a2;a3</code>를 담게 된다. 그런데 ARGN은 놀랍게도 ARGV와 동일한 값을 담고 있다. 이것이 ARGN이 앞에서 정의한 <code>the list of arguments past the last expected argument</code>의 의미라고 생각한다.<br>그러면, 이것을 어디에 써먹을 수 있겠는가. 개인적인 생각이긴 하지만, 다음과 같은 경우를 생각해볼 수 있다.</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span>(libfun a1 a2)</span><br><span class="line">...어쩌고 저쩌고</span><br><span class="line"><span class="keyword">endfunction</span>()</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span>(myfun arg)</span><br><span class="line">...</span><br><span class="line">내 함수에서는 libfun함수의 결과가 필요하지만</span><br><span class="line">a1을 이용해서 함께 결과를 도출한다.</span><br><span class="line">...</span><br><span class="line">    libfun(<span class="variable">$&#123;ARGN&#125;</span>)</span><br><span class="line"><span class="keyword">endfunction</span>()</span><br><span class="line"></span><br><span class="line">myfun(a b c)</span><br></pre></td></tr></table></figure>
+
+<p>대충 이러한 형태가 될 것 같다. myfun 함수는 실제로 하나의 인자만 사용한다고 되어 있지만, 내부에서 추가적인 인자를 이용해서 처리하는 경우를 구현하는 형태이다. 그러나, 어떻게 인자를 넘겨야 할지 불분명하기 때문에 사용자에 대한 배려가 없는 코드가 될 확률이 높다.<br>도대체 왜 ARGN이 있는가? 몇 가지 CMake를 사용하는 코드들을 보면서 추론한 것이지만, 결국 cmake에서 함수로 넘어오는 인자가 가변적이고, 그 수가 매우 많을 수 있다는 점과 이러한 상황을 잘 처리할 수 있는 <code>cmake_parse_arguments</code>라는 함수를 자체적으로 제공하고 있어, 이를 이용하는 스크립트가 많기 때문이라고 결론을 내렸다.</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>Author: </span><span class="post-copyright-info"><a href="http://example.com">Sang-moon, Lee</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>Link: </span><span class="post-copyright-info"><a href="http://example.com/2019/10/09/cmake_argn_argv/">http://example.com/2019/10/09/cmake_argn_argv/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/cmake/">cmake</a><a class="post-meta__tags" href="/tags/ARGN/">ARGN</a><a class="post-meta__tags" href="/tags/ARGV/">ARGV</a><a class="post-meta__tags" href="/tags/%EB%B9%8C%EB%93%9C/">빌드</a><a class="post-meta__tags" href="/tags/%EB%A7%A4%ED%81%AC%EB%A1%9C/">매크로</a><a class="post-meta__tags" href="/tags/%EA%B0%80%EB%B3%80%EC%9D%B8%EC%88%98/">가변인수</a></div><div class="post_share"><div class="social-share" data-image="https://avatars.githubusercontent.com/u/4351142?v=4" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2020/01/06/CSS_position/" title="CSS position에 대한 고찰"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Previous</div><div class="prev_info">CSS position에 대한 고찰</div></div></a></div><div class="next-post pull-right"><a href="/2019/10/01/react_with_backend/" title="react app과 백엔드 서비스 함께 개발하기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Next</div><div class="next_info">react app과 백엔드 서비스 함께 개발하기</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>Related Articles</span></div><div class="relatedPosts-list"><div><a href="/2020/03/01/install_ffmpeg_cmake/" title="cmake로 ffmpeg 라이브러리 설치하기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-03-01</div><div class="title">cmake로 ffmpeg 라이브러리 설치하기</div></div></a></div><div><a href="/2020/02/29/take_ffmpeg_cmake/" title="cmake로 ffmpeg 라이브러리 가져오기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-02-29</div><div class="title">cmake로 ffmpeg 라이브러리 가져오기</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Sang-moon, Lee</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">22</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">117</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">5</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/moonyl"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/moonyl" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:moonysl@hanmail.net" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/07/23/hello-world/" title="Hello World">Hello World</a><time datetime="2024-07-23T09:06:30.763Z" title="Created 2024-07-23 18:06:30">2024-07-23</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/27/docker_host_server_ip/" title="도커 컨테이너에서 도커 호스트의 서버로 접근">도커 컨테이너에서 도커 호스트의 서버로 접근</a><time datetime="2021-12-27T05:49:16.000Z" title="Created 2021-12-27 14:49:16">2021-12-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/22/upgrade_qt5_ubunt1804/" title="우분투 18.04에서 QT5 업그레이드">우분투 18.04에서 QT5 업그레이드</a><time datetime="2021-12-22T05:49:16.000Z" title="Created 2021-12-22 14:49:16">2021-12-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/16/pts_for_video_audio/" title="PTS 개념에 대한 정리">PTS 개념에 대한 정리</a><time datetime="2021-12-16T05:49:16.000Z" title="Created 2021-12-16 14:49:16">2021-12-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/13/git_parameter_variable/" title="git paramters plugin을 이용한 tag 버전 빌드">git paramters plugin을 이용한 tag 버전 빌드</a><time datetime="2021-12-13T05:49:16.000Z" title="Created 2021-12-13 14:49:16">2021-12-13</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By Sang-moon, Lee</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Toggle Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between Single-column and Double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="Back To Top"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.14.0-b3"></script><script src="/js/main.js?v=4.14.0-b3"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  const runMermaid = (ele) => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    Array.from(ele).forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+      const mermaidID = 'mermaid-' + index
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+
+      const renderV10 = () => {
+        renderFn.then(({svg}) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svg)
+        })
+      }
+
+      const renderV9 = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      typeof renderFn === 'string' ? renderV9(renderFn) : renderV10()
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+    
+    codeMermaidEle.forEach(ele => {
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.innerHTML = `<pre class="mermaid-src" hidden>${ele.textContent}</pre>`
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+  
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
