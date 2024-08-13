@@ -1,0 +1,270 @@
+<!DOCTYPE html><html lang="kr" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>프레그먼트 파싱 | 소프트웨어 올라운더</title><meta name="author" content="Sang-moon, Lee"><meta name="copyright" content="Sang-moon, Lee"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="fmp4 포맷의 데이터는 프레그먼트 데이터를 도중의 아무 데이터를 보내더라도 그 시점으로부터 재생을 할 수 있다는 특징을 가지고 있다. 그러므로, 언제 요청이 들어오더라도 현재 시점부터 재생을 시작해야 하는 라이브 영상 재생에 적합한 포맷이라고 할 수 있다. 그러나, 재생을 하기 위해서는 데이터 프레그먼트가 들어오기 전에 항상 초기화 프레그먼트라는 것을 먼">
+<meta property="og:type" content="article">
+<meta property="og:title" content="프레그먼트 파싱">
+<meta property="og:url" content="http://moonyl.github.io/2024/05/13/parsing_fragment/index.html">
+<meta property="og:site_name" content="소프트웨어 올라운더">
+<meta property="og:description" content="fmp4 포맷의 데이터는 프레그먼트 데이터를 도중의 아무 데이터를 보내더라도 그 시점으로부터 재생을 할 수 있다는 특징을 가지고 있다. 그러므로, 언제 요청이 들어오더라도 현재 시점부터 재생을 시작해야 하는 라이브 영상 재생에 적합한 포맷이라고 할 수 있다. 그러나, 재생을 하기 위해서는 데이터 프레그먼트가 들어오기 전에 항상 초기화 프레그먼트라는 것을 먼">
+<meta property="og:locale">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/4351142?v=4">
+<meta property="article:published_time" content="2024-05-13T02:09:10.000Z">
+<meta property="article:modified_time" content="2024-08-08T02:09:10.000Z">
+<meta property="article:author" content="Sang-moon, Lee">
+<meta property="article:tag" content="ffmpeg">
+<meta property="article:tag" content="fmp4">
+<meta property="article:tag" content="프레그먼트">
+<meta property="article:tag" content="라이브스트리밍">
+<meta property="article:tag" content="초기화프레그먼트">
+<meta property="article:tag" content="mp4frag">
+<meta property="article:tag" content="미디어세그먼트">
+<meta property="article:tag" content="실시간재생">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://avatars.githubusercontent.com/u/4351142?v=4"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://moonyl.github.io/2024/05/13/parsing_fragment/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.14.0-b3"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>(()=>{
+      const saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+      
+      window.btf = {
+        saveToLocal: saveToLocal,
+        getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = url
+          script.async = true
+          script.onerror = reject
+          script.onload = script.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            script.onload = script.onreadystatechange = null
+            resolve()
+          }
+
+          Object.keys(attr).forEach(key => {
+            script.setAttribute(key, attr[key])
+          })
+
+          document.head.appendChild(script)
+        }),
+
+        getCSS: (url, id = false) => new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = url
+          if (id) link.id = id
+          link.onerror = reject
+          link.onload = link.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            link.onload = link.onreadystatechange = null
+            resolve()
+          }
+          document.head.appendChild(link)
+        }),
+
+        addGlobalFn: (key, fn, name = false, parent = window) => {
+          const pjaxEnable = false
+          if (!pjaxEnable && key.startsWith('pjax')) return
+
+          const globalFn = parent.globalFn || {}
+          const keyObj = globalFn[key] || {}
+    
+          if (name && keyObj[name]) return
+    
+          name = name || Object.keys(keyObj).length
+          keyObj[name] = fn
+          globalFn[key] = keyObj
+          parent.globalFn = globalFn
+        }
+      }
+    
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+      
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })()</script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":true,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Error',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '프레그먼트 파싱',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2024-08-08 11:09:10'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">39</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">238</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">4</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a href="/" title="소프트웨어 올라운더"><span class="site-name">소프트웨어 올라운더</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">프레그먼트 파싱</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2024-05-13T02:09:10.000Z" title="Created 2024-05-13 11:09:10">2024-05-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2024-08-08T02:09:10.000Z" title="Updated 2024-08-08 11:09:10">2024-08-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D/">프로그래밍</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="프레그먼트 파싱"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>fmp4 포맷의 데이터는 프레그먼트 데이터를 도중의 아무 데이터를 보내더라도 그 시점으로부터 재생을 할 수 있다는 특징을 가지고 있다. 그러므로, 언제 요청이 들어오더라도 현재 시점부터 재생을 시작해야 하는 라이브 영상 재생에 적합한 포맷이라고 할 수 있다. 그러나, 재생을 하기 위해서는 데이터 프레그먼트가 들어오기 전에 항상 초기화 프레그먼트라는 것을 먼저 다운로드해서 초기화시켜줘야 한다. 아마도 파일 형식, 해상도, 오디오 코덱 등의 정보가 들어있지 않을까 한다. 이 정보를 통해서 재생하는 쪽에서도 어a떤 코덱을 써야 할지 어떤 방식으로 미디어 데이터를 디먹싱할 수 있는지 등을 결정할 수 있을 것이다.</p>
+<p>ffmpeg을 통해서 스트림을 파이프로 수신하게 되면 이 데이터 역시 프레그먼트 단위로 보내긴 할 것이다. 그러나 파이프라인 수신 시에 내부적인 버퍼링 등의 작업을 통해 합쳐질 수도 있는 것이다. 재생을 위해서는 이 프레그먼트 단위로 분리해서 전송하는 기능이 필요하며, 또한 최초에는 초기화 프레그먼트를 보내도록 하는 기능도 필요하다. 이 기능을 지원하는 모듈이 있는데 mp4frag라는 모듈이다.</p>
+<p><a target="_blank" rel="noopener" href="https://www.npmjs.com/package/mp4frag">https://www.npmjs.com/package/mp4frag</a></p>
+<p><img src="https://dthumb-phinf.pstatic.net/?src=%22https://static-production.npmjs.com/338e4905a2684ca96e08c7780fc68412.png%22&type=ff500_300" alt="mp4frag">이미지 썸네일 삭제</p>
+<p><strong>mp4frag</strong></p>
+<p>A parser that reads piped data from ffmpeg containing a fragmented mp4 and splits it into an initialization segment and media segments. Designed for streaming live video relayed from cctv cameras.. Latest version: 0.7.0, last published: a year ago. Start using mp4frag in your project by running &#96;npm…</p>
+<p><a target="_blank" rel="noopener" href="http://www.npmjs.com/">www.npmjs.com</a></p>
+<p>우선 mp4frag 모듈을 설치해야 한다.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm i mp4frag</span><br></pre></td></tr></table></figure>
+
+<p>모듈을 가져와서 이 모듈을 사용하기 위한 인스턴스를 하나 생성해야 한다.</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="title class_">Mp4Frag</span> = <span class="built_in">require</span>(<span class="string">&quot;mp4frag&quot;</span>);</span><br><span class="line"><span class="keyword">const</span> mp4frag = <span class="keyword">new</span> <span class="title class_">Mp4Frag</span>();</span><br></pre></td></tr></table></figure>
+
+<p>이 인스턴스에 fmp4 포맷의 스트림을 밀어 넣어주면 된다. mp4frag로부터 segment라는 이벤트를 통해 재생을 바로 할 수 있는 조각을 얻어낼 수 있게 되며, mp4frag.initialization을 접근하면 초기화 프레그먼트를 얻을 수 있다.</p>
+<p>우선, ffmpeg으로부터 나오는 스트림을 mp4frag에 밀어 넣는다. segment 이벤트가 발생하는지를 확인할 코드를 넣어 보자.</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ffmpeg.<span class="property">stdio</span>[<span class="number">1</span>].<span class="title function_">pipe</span>(mp4frag);</span><br><span class="line">mp4frag.<span class="title function_">on</span>(<span class="string">&quot;segment&quot;</span>, <span class="function">(<span class="params">data</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="variable language_">console</span>.<span class="title function_">log</span>(data);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>이전 코드에서 스트림이 발생하는지를 확인해 보기 위해 표준 출력으로 밀어 넣는 기능을 제거한다. 대신 mp4frag.initialization을 확인해 본다.</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">io.<span class="title function_">on</span>(<span class="string">&quot;connection&quot;</span>, <span class="function">(<span class="params">socket</span>) =&gt;</span> &#123;</span><br><span class="line">  <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&quot;connection&quot;</span>);</span><br><span class="line">  <span class="comment">//ffmpeg.stdio[1].pipe(process.stdout);</span></span><br><span class="line">  <span class="variable language_">console</span>.<span class="title function_">log</span>(<span class="string">&quot;initialization:&quot;</span>, mp4frag.<span class="property">initialization</span>);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>여기까지 작업한 것을 실행해 보자.</p>
+<p>segment 이벤트가 발생할 때 콜백으로 들어오는 data 인자는 다음과 같은 형식이다.</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">data<span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">  segment<span class="punctuation">:</span> &lt;Buffer <span class="number">00</span> <span class="number">00</span> <span class="number">01</span> <span class="number">28</span> <span class="number">6</span>d <span class="number">6</span>f <span class="number">6</span>f <span class="number">66</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">10</span> <span class="number">6</span>d <span class="number">66</span> <span class="number">68</span> <span class="number">64</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">05</span> <span class="number">00</span> <span class="number">00</span> <span class="number">01</span> <span class="number">10</span> <span class="number">74</span> <span class="number">72</span> <span class="number">61</span> <span class="number">66</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">1</span>c <span class="number">74</span> <span class="number">66</span> <span class="number">68</span> <span class="number">64</span> <span class="number">00</span> <span class="number">02</span> <span class="number">00</span> <span class="number">38</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">01</span> <span class="number">00</span> <span class="number">00</span> ... <span class="number">600959</span> more bytes&gt;<span class="punctuation">,</span></span><br><span class="line">  sequence<span class="punctuation">:</span> <span class="number">4</span><span class="punctuation">,</span></span><br><span class="line">  duration<span class="punctuation">:</span> <span class="number">1</span><span class="punctuation">,</span></span><br><span class="line">  timestamp<span class="punctuation">:</span> <span class="number">1715589705022</span><span class="punctuation">,</span></span><br><span class="line">  keyframe<span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>여기에서 가장 중요한 부분은 바로 segment라는 필드이다. 이 데이터가 영상의 재생에 사용할 수 있는 스트림이다.</p>
+<p>initialization 값은 다음과 같이 나온다.</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">initialization<span class="punctuation">:</span> &lt;Buffer <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">1</span>c <span class="number">66</span> <span class="number">74</span> <span class="number">79</span> <span class="number">70</span> <span class="number">69</span> <span class="number">73</span> <span class="number">6</span>f <span class="number">35</span> <span class="number">00</span> <span class="number">00</span> <span class="number">02</span> <span class="number">00</span> <span class="number">69</span> <span class="number">73</span> <span class="number">6</span>f <span class="number">35</span> <span class="number">69</span> <span class="number">73</span> <span class="number">6</span>f <span class="number">36</span> <span class="number">6</span>d <span class="number">70</span> <span class="number">34</span> <span class="number">31</span> <span class="number">00</span> <span class="number">00</span> <span class="number">04</span> ba <span class="number">6</span>d <span class="number">6</span>f <span class="number">6</span>f <span class="number">76</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">6</span>c <span class="number">6</span>d <span class="number">76</span> <span class="number">68</span> <span class="number">64</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> ... <span class="number">1188</span> more bytes&gt;</span><br></pre></td></tr></table></figure>
+
+<p>둘 다 Buffer 타입으로 미디어나 미디어를 설명하는 메타데이터가 들어있을 것임을 짐작할 수 있다. 재생에 필요한 데이터를 획득하는 방법을 알았으니 이젠 전송해서 재생을 해주면 될 것 같다. 작업한 내용은 다음 깃헙 저장소에 업데이트한다.</p>
+<p><a target="_blank" rel="noopener" href="https://github.com/moonyl/mse-remind/tree/v0.3.0">https://github.com/moonyl/mse-remind/tree/v0.3.0</a></p>
+<p><img src="https://dthumb-phinf.pstatic.net/?src=%22https://opengraph.githubassets.com/9fde5ef59d6b62a0971d4fd2753d26da62382493bddac3d6773c0000a9e688ab/moonyl/mse-remind%22&type=ff500_300" alt="GitHub - moonyl/mse-remind at v0.3.0">이미지 썸네일 삭제</p>
+<p><strong>GitHub - moonyl&#x2F;mse-remind at v0.3.0</strong></p>
+<p>Contribute to moonyl&#x2F;mse-remind development by creating an account on GitHub.</p>
+<p>github.com</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>Author: </span><span class="post-copyright-info"><a href="http://moonyl.github.io">Sang-moon, Lee</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>Link: </span><span class="post-copyright-info"><a href="http://moonyl.github.io/2024/05/13/parsing_fragment/">http://moonyl.github.io/2024/05/13/parsing_fragment/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/ffmpeg/">ffmpeg</a><a class="post-meta__tags" href="/tags/fmp4/">fmp4</a><a class="post-meta__tags" href="/tags/%ED%94%84%EB%A0%88%EA%B7%B8%EB%A8%BC%ED%8A%B8/">프레그먼트</a><a class="post-meta__tags" href="/tags/%EB%9D%BC%EC%9D%B4%EB%B8%8C%EC%8A%A4%ED%8A%B8%EB%A6%AC%EB%B0%8D/">라이브스트리밍</a><a class="post-meta__tags" href="/tags/%EC%B4%88%EA%B8%B0%ED%99%94%ED%94%84%EB%A0%88%EA%B7%B8%EB%A8%BC%ED%8A%B8/">초기화프레그먼트</a><a class="post-meta__tags" href="/tags/mp4frag/">mp4frag</a><a class="post-meta__tags" href="/tags/%EB%AF%B8%EB%94%94%EC%96%B4%EC%84%B8%EA%B7%B8%EB%A8%BC%ED%8A%B8/">미디어세그먼트</a><a class="post-meta__tags" href="/tags/%EC%8B%A4%EC%8B%9C%EA%B0%84%EC%9E%AC%EC%83%9D/">실시간재생</a></div><div class="post_share"><div class="social-share" data-image="https://avatars.githubusercontent.com/u/4351142?v=4" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2024/05/15/video_elem_media_source/" title="video 원소와 미디어 소스"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Previous</div><div class="prev_info">video 원소와 미디어 소스</div></div></a></div><div class="next-post pull-right"><a href="/2024/05/13/intercept_pipe_output/" title="pipe 출력을 가로채기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Next</div><div class="next_info">pipe 출력을 가로채기</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>Related Articles</span></div><div class="relatedPosts-list"><div><a href="/2024/05/13/intercept_pipe_output/" title="pipe 출력을 가로채기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-05-13</div><div class="title">pipe 출력을 가로채기</div></div></a></div><div><a href="/2017/12/20/avformat_seek_file/" title="avformat_seek_file 좀 더 파기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2017-12-20</div><div class="title">avformat_seek_file 좀 더 파기</div></div></a></div><div><a href="/2017/12/20/av_frame_free/" title="av_frame_free에 대한 고찰"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2017-12-20</div><div class="title">av_frame_free에 대한 고찰</div></div></a></div><div><a href="/2021/11/25/implement_Dash_service/" title="DASH 서비스 해보기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-11-25</div><div class="title">DASH 서비스 해보기</div></div></a></div><div><a href="/2020/03/01/install_ffmpeg_cmake/" title="cmake로 ffmpeg 라이브러리 설치하기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-03-01</div><div class="title">cmake로 ffmpeg 라이브러리 설치하기</div></div></a></div><div><a href="/2021/12/16/pts_for_video_audio/" title="PTS 개념에 대한 정리"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-12-16</div><div class="title">PTS 개념에 대한 정리</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Sang-moon, Lee</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">39</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">238</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/moonyl"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/moonyl" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:moonysl@hanmail.net" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/13/debugging_with_args_using_cmake_tools/" title="VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법">VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법</a><time datetime="2024-08-13T08:42:31.676Z" title="Created 2024-08-13 17:42:31">2024-08-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/understand_interceptor_nestjs/" title="Nest.js 인터셉터 이해하기">Nest.js 인터셉터 이해하기</a><time datetime="2024-08-08T05:24:02.632Z" title="Created 2024-08-08 14:24:02">2024-08-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/use_as_in_python/" title="Python에서 as 키워드의 다양한 활용법과 중요성">Python에서 as 키워드의 다양한 활용법과 중요성</a><time datetime="2024-08-08T04:25:51.556Z" title="Created 2024-08-08 13:25:51">2024-08-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/python_datetime_package/" title="Python datetime 패키지- 날짜와 시간을 효과적으로 다루는 방법">Python datetime 패키지- 날짜와 시간을 효과적으로 다루는 방법</a><time datetime="2024-08-08T01:40:56.577Z" title="Created 2024-08-08 10:40:56">2024-08-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/07/05/PM2-process-management/" title="PM2 프로세스 관리- 주요 인터페이스와 메서드 안내">PM2 프로세스 관리- 주요 인터페이스와 메서드 안내</a><time datetime="2024-07-05T05:13:52.000Z" title="Created 2024-07-05 14:13:52">2024-07-05</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By Sang-moon, Lee</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Toggle Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between Single-column and Double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="Back To Top"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.14.0-b3"></script><script src="/js/main.js?v=4.14.0-b3"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  const runMermaid = (ele) => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    Array.from(ele).forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+      const mermaidID = 'mermaid-' + index
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+
+      const renderV10 = () => {
+        renderFn.then(({svg}) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svg)
+        })
+      }
+
+      const renderV9 = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      typeof renderFn === 'string' ? renderV9(renderFn) : renderV10()
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+    
+    codeMermaidEle.forEach(ele => {
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.innerHTML = `<pre class="mermaid-src" hidden>${ele.textContent}</pre>`
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+  
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
