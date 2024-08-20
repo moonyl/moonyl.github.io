@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="kr" data-theme="light"><head><script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-TBR62GSZ');</script><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>NestJS - 커스텀 데코레이터로 API 접근 제어하기 | 소프트웨어 올라운더</title><meta name="author" content="Sang-moon, Lee"><meta name="copyright" content="Sang-moon, Lee"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="들어가며NesJS는 데코레이터를 적극적으로 활용하여 코드를 간결하고 효율적으로 만드는 프레임워크이다. NestJS는 @Controller, @Get, @Post 등 다양한 내장 데코레이터를 제공하지만, 필요에 따라 커스텀 데코레이터를 생성하여 사용할 수도 있다. 여기에서는 NestJS에서 커스텀 데코레이터를 생성하여 API 접근을 제어하는 방법에 대해서 살">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NestJS - 커스텀 데코레이터로 API 접근 제어하기">
+<meta property="og:url" content="http://moonyl.github.io/2024/08/20/nestjs-custom-deco/index.html">
+<meta property="og:site_name" content="소프트웨어 올라운더">
+<meta property="og:description" content="들어가며NesJS는 데코레이터를 적극적으로 활용하여 코드를 간결하고 효율적으로 만드는 프레임워크이다. NestJS는 @Controller, @Get, @Post 등 다양한 내장 데코레이터를 제공하지만, 필요에 따라 커스텀 데코레이터를 생성하여 사용할 수도 있다. 여기에서는 NestJS에서 커스텀 데코레이터를 생성하여 API 접근을 제어하는 방법에 대해서 살">
+<meta property="og:locale">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/4351142?v=4">
+<meta property="article:published_time" content="2024-08-20T01:49:52.787Z">
+<meta property="article:modified_time" content="2024-08-20T01:52:26.035Z">
+<meta property="article:author" content="Sang-moon, Lee">
+<meta property="article:tag" content="웹개발">
+<meta property="article:tag" content="NestJS">
+<meta property="article:tag" content="커스텀데코레이터">
+<meta property="article:tag" content="API접근제어">
+<meta property="article:tag" content="PermissionGuard">
+<meta property="article:tag" content="프레임워크">
+<meta property="article:tag" content="메타데이터">
+<meta property="article:tag" content="데코레이터">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://avatars.githubusercontent.com/u/4351142?v=4"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://moonyl.github.io/2024/08/20/nestjs-custom-deco/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.14.0-b3"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>(()=>{
+      const saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+      
+      window.btf = {
+        saveToLocal: saveToLocal,
+        getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = url
+          script.async = true
+          script.onerror = reject
+          script.onload = script.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            script.onload = script.onreadystatechange = null
+            resolve()
+          }
+
+          Object.keys(attr).forEach(key => {
+            script.setAttribute(key, attr[key])
+          })
+
+          document.head.appendChild(script)
+        }),
+
+        getCSS: (url, id = false) => new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+          link.rel = 'stylesheet'
+          link.href = url
+          if (id) link.id = id
+          link.onerror = reject
+          link.onload = link.onreadystatechange = function() {
+            const loadState = this.readyState
+            if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+            link.onload = link.onreadystatechange = null
+            resolve()
+          }
+          document.head.appendChild(link)
+        }),
+
+        addGlobalFn: (key, fn, name = false, parent = window) => {
+          const pjaxEnable = false
+          if (!pjaxEnable && key.startsWith('pjax')) return
+
+          const globalFn = parent.globalFn || {}
+          const keyObj = globalFn[key] || {}
+    
+          if (name && keyObj[name]) return
+    
+          name = name || Object.keys(keyObj).length
+          keyObj[name] = fn
+          globalFn[key] = keyObj
+          parent.globalFn = globalFn
+        }
+      }
+    
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+      
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })()</script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":true,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Error',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'NestJS - 커스텀 데코레이터로 API 접근 제어하기',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-08-20 10:52:26'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TBR62GSZ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">40</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">244</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">4</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a href="/" title="소프트웨어 올라운더"><span class="site-name">소프트웨어 올라운더</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">NestJS - 커스텀 데코레이터로 API 접근 제어하기</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2024-08-20T01:49:52.787Z" title="Created 2024-08-20 10:49:52">2024-08-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2024-08-20T01:52:26.035Z" title="Updated 2024-08-20 10:52:26">2024-08-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D/">프로그래밍</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="NestJS - 커스텀 데코레이터로 API 접근 제어하기"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post Views:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="들어가며"><a href="#들어가며" class="headerlink" title="들어가며"></a>들어가며</h2><p>NesJS는 데코레이터를 적극적으로 활용하여 코드를 간결하고 효율적으로 만드는 프레임워크이다. NestJS는 @Controller, @Get, @Post 등 다양한 내장 데코레이터를 제공하지만, 필요에 따라 커스텀 데코레이터를 생성하여 사용할 수도 있다. 여기에서는 NestJS에서 커스텀 데코레이터를 생성하여 API 접근을 제어하는 방법에 대해서 살펴본다. 특히, 특정 권한을 가진 사용자만 특정 API에 접근할 수 있도록 제어하는 데코레이터를 만들고 적용하는 과정을 다룬다.</p>
+<h2 id="커스텀-데코레이터-Permission-생성하기"><a href="#커스텀-데코레이터-Permission-생성하기" class="headerlink" title="커스텀 데코레이터: @Permission 생성하기"></a>커스텀 데코레이터: @Permission 생성하기</h2><p>API 접근 권한을 나타내는 @Permission 데코레이터를 생성해보자. 이 데코레이터는 특정 권한(예: read, write, admin)을 메타데이터로 저장하여, 나중에 가드에서 해당 메타데이터를 확인하고 접근을 제어할 수 있도록 한다.</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">SetMetadata</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@nestjs/common&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">const</span> <span class="title function_">Permission</span> = (<span class="params"><span class="attr">permission</span>: <span class="built_in">string</span></span>) =&gt;</span><br><span class="line">  <span class="title class_">SetMetadata</span>(<span class="string">&quot;permission&quot;</span>, permission);</span><br></pre></td></tr></table></figure>
+
+<p>이 코드에서 SetMetadata 함수는 NestJS에서 제공하는 유틸리티 함수로, 지정된 키와 값으로 메타데이터를 설정한다. Permission 데코레이터는 permission 문자열을 인자로 받아 ‘permission’이라는 키와 함께 메타데이터를 설정한다.</p>
+<h2 id="가드를-이용한-접근-제어-PermissionGuard"><a href="#가드를-이용한-접근-제어-PermissionGuard" class="headerlink" title="가드를 이용한 접근 제어: PermissionGuard"></a>가드를 이용한 접근 제어: PermissionGuard</h2><p>@Permission 데코레이터에서 설정한 메타데이터를 사용하여 실제로 API 접근을 제어하는 가드를 만들어야 한다. PermissionGuard는 canActivate 메서드를 통해 요청이 들어올 때마다 사용자의 권한을 확인하고, API에 접근할 수 있는지 여부를 결정한다.</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">Injectable</span>, <span class="title class_">CanActivate</span>, <span class="title class_">ExecutionContext</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@nestjs/common&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">Reflector</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@nestjs/core&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Injectable</span>()</span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> <span class="title class_">PermissionGuard</span> <span class="keyword">implements</span> <span class="title class_">CanActivate</span> &#123;</span><br><span class="line">  <span class="title function_">constructor</span>(<span class="params"><span class="keyword">private</span> <span class="attr">reflector</span>: <span class="title class_">Reflector</span></span>) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="title function_">canActivate</span>(<span class="attr">context</span>: <span class="title class_">ExecutionContext</span>): <span class="built_in">boolean</span> &#123;</span><br><span class="line">    <span class="comment">// @Permission 데코레이터에서 설정된 permission 메타데이터 가져오기</span></span><br><span class="line">    <span class="keyword">const</span> requiredPermission = <span class="variable language_">this</span>.<span class="property">reflector</span>.<span class="property">get</span>&lt;<span class="built_in">string</span>&gt;(</span><br><span class="line">      <span class="string">&quot;permission&quot;</span>,</span><br><span class="line">      context.<span class="title function_">getHandler</span>()</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    <span class="comment">// requiredPermission이 없다면 모든 사용자 접근 허용</span></span><br><span class="line">    <span class="keyword">if</span> (!requiredPermission) &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 실제 애플리케이션에서는 DB 또는 세션에서 사용자 권한을 가져와야 합니다.</span></span><br><span class="line">    <span class="comment">// 여기서는 예시로  userPermissions 배열을 사용합니다.</span></span><br><span class="line">    <span class="keyword">const</span> userPermissions = [<span class="string">&quot;read&quot;</span>, <span class="string">&quot;write&quot;</span>];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 사용자 권한에 requiredPermission이 포함되어 있는지 확인</span></span><br><span class="line">    <span class="keyword">return</span> userPermissions.<span class="title function_">includes</span>(requiredPermission);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Reflector는 데코레이터에서 설정한 메타데이터를 가져오는 데 사용된다. context.getHandler() 는 현재 실행 중인 핸들러(컨트롤러 메서드)를 가져오고, <code>this.reflector.get&lt;string&gt;(&#39;permission&#39;, context.getHandler())</code> 는 해당 핸들러에 설정된 ‘permssion’ 메타데이터를 가져온다.</p>
+<h2 id="컨트롤러에서-Permission-데코레이터-적용하기"><a href="#컨트롤러에서-Permission-데코레이터-적용하기" class="headerlink" title="컨트롤러에서 @Permission 데코레이터 적용하기"></a>컨트롤러에서 @Permission 데코레이터 적용하기</h2><p>이제 @Permission 데코레이터와 PermissionGuard를 이용하여 특정 API에 접근 제어를 적용해보자.</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">Controller</span>, <span class="title class_">Get</span>, <span class="title class_">UseGuards</span> &#125; <span class="keyword">from</span> <span class="string">&quot;@nestjs/common&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">Permission</span> &#125; <span class="keyword">from</span> <span class="string">&quot;./permission.decorator&quot;</span>;</span><br><span class="line"><span class="keyword">import</span> &#123; <span class="title class_">PermissionGuard</span> &#125; <span class="keyword">from</span> <span class="string">&quot;./permission.guard&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Controller</span>(<span class="string">&quot;data&quot;</span>)</span><br><span class="line"><span class="meta">@UseGuards</span>(<span class="title class_">PermissionGuard</span>) <span class="comment">// 컨트롤러 레벨에서 PermissionGuard 적용</span></span><br><span class="line"><span class="keyword">export</span> <span class="keyword">class</span> <span class="title class_">DataController</span> &#123;</span><br><span class="line">  <span class="meta">@Get</span>(<span class="string">&quot;public&quot;</span>)</span><br><span class="line">  <span class="title function_">getPublicData</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;Public data&quot;</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@Get</span>(<span class="string">&quot;protected&quot;</span>)</span><br><span class="line">  <span class="meta">@Permission</span>(<span class="string">&quot;read&quot;</span>) <span class="comment">// read 권한 필요</span></span><br><span class="line">  <span class="title function_">getProtectedData</span>(<span class="params"></span>) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;Protected data&quot;</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>@UseGuards(PermissionGuard) 데코레이터는 DataController의 모든 메서드에 PermissionGuard를 적용한다. getPublicData() 메서드는 @Permission 데코레이터가 없으므로 모든 사용자가 접근할 수 있다. 반면에 getProtectedData() 메서드는 @Permission(‘read’) 데코레이터가 적용되어 있으므로, read 권한을 가진 사용자만 접근할 수 있다.</p>
+<h2 id="마무리"><a href="#마무리" class="headerlink" title="마무리"></a>마무리</h2><p>커스텀 데코레이터와 가드를 이용하면 NestJS에서 API 접근 제어를 유연하고 효율적으로 구현할 수 있다. 예제를 잘 활용하여 필요에 맞는 커스텀 데코레이터르 ㄹ만들고 적용하여 애플리케이션의 보안과 기능을 향상시킬 수 있기를 기대한다.</p>
+<h3 id="예제-코드"><a href="#예제-코드" class="headerlink" title="예제 코드"></a>예제 코드</h3><p><a target="_blank" rel="noopener" href="https://github.com/moonyl/nestjs-custom-deco">nestjs-custom-deco</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>Author: </span><span class="post-copyright-info"><a href="http://moonyl.github.io">Sang-moon, Lee</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>Link: </span><span class="post-copyright-info"><a href="http://moonyl.github.io/2024/08/20/nestjs-custom-deco/">http://moonyl.github.io/2024/08/20/nestjs-custom-deco/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%EC%9B%B9%EA%B0%9C%EB%B0%9C/">웹개발</a><a class="post-meta__tags" href="/tags/NestJS/">NestJS</a><a class="post-meta__tags" href="/tags/%EC%BB%A4%EC%8A%A4%ED%85%80%EB%8D%B0%EC%BD%94%EB%A0%88%EC%9D%B4%ED%84%B0/">커스텀데코레이터</a><a class="post-meta__tags" href="/tags/API%EC%A0%91%EA%B7%BC%EC%A0%9C%EC%96%B4/">API접근제어</a><a class="post-meta__tags" href="/tags/PermissionGuard/">PermissionGuard</a><a class="post-meta__tags" href="/tags/%ED%94%84%EB%A0%88%EC%9E%84%EC%9B%8C%ED%81%AC/">프레임워크</a><a class="post-meta__tags" href="/tags/%EB%A9%94%ED%83%80%EB%8D%B0%EC%9D%B4%ED%84%B0/">메타데이터</a><a class="post-meta__tags" href="/tags/%EB%8D%B0%EC%BD%94%EB%A0%88%EC%9D%B4%ED%84%B0/">데코레이터</a></div><div class="post_share"><div class="social-share" data-image="https://avatars.githubusercontent.com/u/4351142?v=4" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2024/08/13/debugging_with_args_using_cmake_tools/" title="VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">Next</div><div class="next_info">VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>Related Articles</span></div><div class="relatedPosts-list"><div><a href="/2024/08/08/understand_interceptor_nestjs/" title="Nest.js 인터셉터 이해하기"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-08-08</div><div class="title">Nest.js 인터셉터 이해하기</div></div></a></div><div><a href="/2024/06/28/request_web_with_requests/" title="Requests로 웹 페이지 요청하기 - 데이터 수집의 시작"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-06-28</div><div class="title">Requests로 웹 페이지 요청하기 - 데이터 수집의 시작</div></div></a></div><div><a href="/2024/05/15/video_elem_media_source/" title="video 원소와 미디어 소스"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-05-15</div><div class="title">video 원소와 미디어 소스</div></div></a></div><div><a href="/2024/06/17/transfer_segment_mime_type/" title="세그먼트 전달과 MIME 타입"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-06-17</div><div class="title">세그먼트 전달과 MIME 타입</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://avatars.githubusercontent.com/u/4351142?v=4" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Sang-moon, Lee</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">40</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">244</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/moonyl"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/moonyl" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:moonysl@hanmail.net" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>Contents</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%EB%93%A4%EC%96%B4%EA%B0%80%EB%A9%B0"><span class="toc-number">1.</span> <span class="toc-text">들어가며</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%EC%BB%A4%EC%8A%A4%ED%85%80-%EB%8D%B0%EC%BD%94%EB%A0%88%EC%9D%B4%ED%84%B0-Permission-%EC%83%9D%EC%84%B1%ED%95%98%EA%B8%B0"><span class="toc-number">2.</span> <span class="toc-text">커스텀 데코레이터: @Permission 생성하기</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%EA%B0%80%EB%93%9C%EB%A5%BC-%EC%9D%B4%EC%9A%A9%ED%95%9C-%EC%A0%91%EA%B7%BC-%EC%A0%9C%EC%96%B4-PermissionGuard"><span class="toc-number">3.</span> <span class="toc-text">가드를 이용한 접근 제어: PermissionGuard</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%EC%BB%A8%ED%8A%B8%EB%A1%A4%EB%9F%AC%EC%97%90%EC%84%9C-Permission-%EB%8D%B0%EC%BD%94%EB%A0%88%EC%9D%B4%ED%84%B0-%EC%A0%81%EC%9A%A9%ED%95%98%EA%B8%B0"><span class="toc-number">4.</span> <span class="toc-text">컨트롤러에서 @Permission 데코레이터 적용하기</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%EB%A7%88%EB%AC%B4%EB%A6%AC"><span class="toc-number">5.</span> <span class="toc-text">마무리</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%EC%98%88%EC%A0%9C-%EC%BD%94%EB%93%9C"><span class="toc-number">5.1.</span> <span class="toc-text">예제 코드</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/20/nestjs-custom-deco/" title="NestJS - 커스텀 데코레이터로 API 접근 제어하기">NestJS - 커스텀 데코레이터로 API 접근 제어하기</a><time datetime="2024-08-20T01:49:52.787Z" title="Created 2024-08-20 10:49:52">2024-08-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/13/debugging_with_args_using_cmake_tools/" title="VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법">VS Code의 CMake Tools를 사용하여 인자를 넘기면서 디버깅하는 방법</a><time datetime="2024-08-13T08:42:31.676Z" title="Created 2024-08-13 17:42:31">2024-08-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/understand_interceptor_nestjs/" title="Nest.js 인터셉터 이해하기">Nest.js 인터셉터 이해하기</a><time datetime="2024-08-08T05:24:02.632Z" title="Created 2024-08-08 14:24:02">2024-08-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/use_as_in_python/" title="Python에서 as 키워드의 다양한 활용법과 중요성">Python에서 as 키워드의 다양한 활용법과 중요성</a><time datetime="2024-08-08T04:25:51.556Z" title="Created 2024-08-08 13:25:51">2024-08-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/08/08/python_datetime_package/" title="Python datetime 패키지- 날짜와 시간을 효과적으로 다루는 방법">Python datetime 패키지- 날짜와 시간을 효과적으로 다루는 방법</a><time datetime="2024-08-08T01:40:56.577Z" title="Created 2024-08-08 10:40:56">2024-08-08</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By Sang-moon, Lee</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Toggle Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between Single-column and Double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="Table Of Contents"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="Back To Top"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.14.0-b3"></script><script src="/js/main.js?v=4.14.0-b3"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.35/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>(() => {
+  const runMermaid = (ele) => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    Array.from(ele).forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+      const mermaidID = 'mermaid-' + index
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+
+      const renderV10 = () => {
+        renderFn.then(({svg}) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svg)
+        })
+      }
+
+      const renderV9 = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      typeof renderFn === 'string' ? renderV9(renderFn) : renderV10()
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+    
+    codeMermaidEle.forEach(ele => {
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.innerHTML = `<pre class="mermaid-src" hidden>${ele.textContent}</pre>`
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+  
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
